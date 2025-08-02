@@ -1,0 +1,69 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-image: url('https://mcdn.wallpapersafari.com/medium/92/51/okBy9U.jpg');
+}
+
+.header {
+    margin: 20px 0;
+}
+
+.frequency-container {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin: 20px 0;
+}
+
+.freq-bar {
+    width: 20px;
+    background-color: #4caf50;
+    transition: height 0.1s ease;
+}
+
+.status-container {
+    margin: 20px 0;
+}
+
+.status-message {
+    display: none;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.status-message.active {
+    display: block;
+}
+
+#silence-status.active {
+    color: green;
+}
+
+#loud-status.active {
+    color: orange;
+}
+
+#too-loud-status.active {
+    color: red;
+}
+
+.button-container {
+    margin: 20px 0;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1em;
+    margin: 0 10px;
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.how-it-works {
+    max-width: 600px;
+    margin: 20px auto;
+}

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loud Silence Detector</title>
+  <style>
+    body {
+      background-image: url('https://mcdn.wallpapersafari.com/medium/90/43/VokmGu.jpg');
+      background-size: cover;
+      background-position: center;
+      font-family: 'Comic Sans MS', 'Segoe UI', sans-serif;
+      text-align: center;
+      color: rgb(255, 255, 255);
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      text-shadow: 2px 2px 4px #000;
+    }
+
+    #meter-container {
+      width: 200px;
+      height: 200px;
+      margin: 2rem auto;
+      border-radius: 50%;
+      background: conic-gradient(#2a2d2d var(--level), #3a3d3d66 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s ease;
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    #volume-text {
+      font-size: 1.5rem;
+      margin-top: 1rem;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .status {
+      font-weight: bold;
+      font-size: 2rem;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    button {
+      margin: 1rem 0.5rem;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    #stopBtn {
+      background-color: #373b3d78;
+    }
+
+    #startBtn {
+      background-color: #373b3d78;
+    }
+  </style>
+</head>
+<body>
+  <h1>Loud Silence Detector</h1>
+  <p>Welcome to the Anti-Noise Zone</p>
+  <div id="meter-container" style="--level: 0deg;">
+    <div id="volume-text">Waiting...</div>
+  </div>
+  <div class="status" id="statusText">Press Start</div>
+  <button id="startBtn">Start Listening</button>
+  <button id="stopBtn">Stop Listening</button>
+
+  <script>
+    let currentVolume = 0;
+    let silenceStart = null;
+    let speaking = false;
+    let animationRef = null;
+    let streamRef = null;
+    let context = null;
+
+    const statusText = document.getElementById("statusText");
+    const volumeText = document.getElementById("volume-text");
+    const meter = document.getElementById("meter-container");
+    const stopBtn = document.getElementById("stopBtn");
+    const startBtn = document.getElementById("startBtn");
+
+    async function initAudio() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        statusText.textContent = "Microphone API not supported in this browser.";
+        return;
+      }
+
+      try {
+        streamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
+        context = new (window.AudioContext || window.webkitAudioContext)();
+        const source = context.createMediaStreamSource(streamRef);
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 2048;
+        const data = new Uint8Array(analyser.fftSize);
+
+        source.connect(analyser);
+
+        function update() {
+          analyser.getByteTimeDomainData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            let value = (data[i] - 128) / 128;
+            sum += value * value;
+          }
+          currentVolume = Math.sqrt(sum / data.length);
+
+          const degree = Math.min(360, currentVolume * 1200);
+          meter.style.setProperty('--level', degree + 'deg');
+
+          if (currentVolume < 0.01) {
+            volumeText.textContent = "Perfect Silence";
+            if (!silenceStart) silenceStart = Date.now();
+            else if (Date.now() - silenceStart > 5000 && !speaking) {
+              speak("Birds laughing funny sound");
+            }
+          } else if (currentVolume < 0.3) {
+            volumeText.textContent = "Hmm... Getting Loud";
+            silenceStart = null;
+          } else {
+            volumeText.textContent = "TOO LOUD!";
+            if (!speaking) speak("Can't you make some sound?");
+            silenceStart = null;
+          }
+
+          statusText.textContent = `Volume Level: ${currentVolume.toFixed(3)}`;
+          animationRef = requestAnimationFrame(update);
+        }
+
+        animationRef = requestAnimationFrame(update);
+      } catch (e) {
+        if (e.name === 'NotAllowedError') {
+          statusText.textContent = "Microphone access was denied. Please allow access and refresh the page.";
+        } else {
+          statusText.textContent = "An error occurred while accessing the microphone.";
+        }
+        console.error(e);
+      }
+    }
+
+    function speak(text) {
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.onstart = () => speaking = true;
+      msg.onend = () => speaking = false;
+      speechSynthesis.speak(msg);
+    }
+
+    function stopListening() {
+      if (animationRef) cancelAnimationFrame(animationRef);
+      if (streamRef) {
+        const tracks = streamRef.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+      if (context) context.close();
+      statusText.textContent = "Detection stopped.";
+      volumeText.textContent = "Stopped";
+    }
+
+    stopBtn.addEventListener("click", stopListening);
+    startBtn.addEventListener("click", () => {
+      stopListening();
+      statusText.textContent = "Initializing...";
+      volumeText.textContent = "Listening...";
+      initAudio();
+    });
+  </script>
+</body>
+</html>
